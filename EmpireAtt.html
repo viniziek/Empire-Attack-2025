@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empire Attack - Multiplayer Enhanced</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #2c3e50;
+            color: white;
+        }
+
+        body.game-mode {
+            overflow: hidden;
+        }
+
+        .game-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .game-canvas {
+            flex: 1;
+            position: relative;
+            background: #34495e;
+        }
+
+        #gameCanvas {
+            border: 2px solid #27ae60;
+            cursor: crosshair;
+            display: block;
+        }
+
+        .ui-panel {
+            width: 340px;
+            background: #2c3e50;
+            padding: 20px;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.3);
+            overflow-y: auto;
+        }
+
+        .ui-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #34495e;
+            border-radius: 5px;
+        }
+
+        .ui-section h3 {
+            margin-top: 0;
+            color: #ecf0f1;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #2980b9;
+        }
+
+        .button.active {
+            background: #27ae60;
+        }
+
+        .button.danger {
+            background: #e74c3c;
+        }
+
+        .button.danger:hover {
+            background: #c0392b;
+        }
+
+        .button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .button.pause {
+            background: #f39c12;
+        }
+
+        .button.pause:hover {
+            background: #e67e22;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+            margin: 10px 0;
+        }
+
+        .arrow-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 2px;
+            max-width: 120px;
+            margin: 10px auto;
+        }
+
+        .arrow-btn {
+            background: #34495e;
+            border: 1px solid #3498db;
+            color: white;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .arrow-btn:hover {
+            background: #3498db;
+        }
+
+        .stats {
+            background: #2c3e50;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #3498db;
+        }
+
+        .game-timer {
+            background: #2c3e50;
+            padding: 12px;
+            margin: 10px 0;
+            border-left: 4px solid #e67e22;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .empire-stats {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .empire-player { background: #2980b9; }
+        .empire-enemy1 { background: #c0392b; }
+        .empire-enemy2 { background: #8e44ad; }
+        .empire-enemy3 { background: #f39c12; }
+        .empire-enemy4 { background: #27ae60; }
+        .empire-enemy5 { background: #e67e22; }
+
+        .population-input {
+            width: 80px;
+            padding: 5px;
+            margin: 5px;
+            background: #34495e;
+            border: 1px solid #3498db;
+            color: white;
+            border-radius: 3px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            max-width: 250px;
+        }
+
+        .log {
+            height: 150px;
+            overflow-y: auto;
+            background: #2c3e50;
+            border: 1px solid #34495e;
+            padding: 10px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-player { color: #3498db; }
+        .log-enemy { color: #e74c3c; }
+        .log-neutral { color: #95a5a6; }
+        .log-special { color: #f39c12; font-weight: bold; }
+
+        .cooldown-indicator {
+            background: #e74c3c;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .cooldown-indicator.ready {
+            background: #27ae60;
+        }
+
+        .cooldown-indicator.frenzy {
+            background: #f39c12;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .pause-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .pause-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1500;
+        }
+
+        .pause-message {
+            background: #2c3e50;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            border: 3px solid #f39c12;
+        }
+
+        /* Modal para mensagens de vitória/derrota */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: #2c3e50;
+            margin: 5% auto;
+            padding: 30px;
+            border: 3px solid #3498db;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            font-size: 2em;
+        }
+
+        .victory {
+            border-color: #27ae60;
+            color: #27ae60;
+        }
+
+        .defeat {
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        .modal-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .modal-button:hover {
+            background: #2980b9;
+        }
+
+        .keyboard-hint {
+            font-size: 11px;
+            color: #95a5a6;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        /* Tela de seleção de dificuldade */
+        .difficulty-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            z-index: 3000;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .difficulty-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .difficulty-content {
+            background: #2c3e50;
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #3498db;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .difficulty-content h1 {
+            color: #ecf0f1;
+            margin-bottom: 15px;
+            font-size: 2.2em;
+        }
+
+        .difficulty-content > p {
+            color: #bdc3c7;
+            margin-bottom: 25px;
+            font-size: 1.1em;
+        }
+
+        .difficulty-options {
+            margin: 25px 0;
+        }
+
+        .difficulty-card {
+            background: #34495e;
+            border: 2px solid #7f8c8d;
+            border-radius: 10px;
+            padding: 18px;
+            margin: 12px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .difficulty-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .difficulty-card.selected {
+            border-color: #27ae60;
+            background: #2c3e50;
+        }
+
+        .difficulty-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.2em;
+        }
+
+        .difficulty-card.easy h3 { color: #27ae60; }
+        .difficulty-card.medium h3 { color: #f39c12; }
+        .difficulty-card.hard h3 { color: #e74c3c; }
+
+        .difficulty-card p {
+            margin: 4px 0;
+            color: #bdc3c7;
+            font-size: 0.85em;
+        }
+
+        .start-button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .start-button:hover {
+            background: #2ecc71;
+        }
+
+        .start-button:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .difficulty-info {
+            text-align: center;
+            margin-top: 20px;
+            padding: 12px;
+            background: #34495e;
+            border-radius: 8px;
+            color: #bdc3c7;
+            font-size: 0.9em;
+        }
+
+        /* Responsividade */
+        @media (max-height: 800px) {
+            .difficulty-wrapper {
+                align-items: flex-start;
+                padding: 10px;
+            }
+            
+            .difficulty-content {
+                padding: 20px;
+            }
+            
+            .difficulty-content h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .difficulty-content {
+                padding: 20px 15px;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Seleção de Dificuldade -->
+    <div id="difficultyScreen" class="difficulty-screen">
+        <div class="difficulty-wrapper">
+            <div class="difficulty-content">
+                <h1>🏰 Empire Attack - Ultimate Edition</h1>
+                <p>Escolha o nível de dificuldade - Você vs 5 Inimigos!</p>
+                
+                <div class="difficulty-options">
+                    <div class="difficulty-card easy" onclick="selectDifficulty('easy')">
+                        <h3>🟢 Fácil</h3>
+                        <p><strong>Velocidade IA:</strong> Lenta (8 segundos entre ações)</p>
+                        <p><strong>Agressividade:</strong> Baixa (25% chance de atacar)</p>
+                        <p><strong>Força:</strong> Ataques de 30-120 unidades</p>
+                        <p><strong>Expansão:</strong> 20-80 unidades por célula</p>
+                    </div>
+                    
+                    <div class="difficulty-card medium" onclick="selectDifficulty('medium')">
+                        <h3>🟡 Médio</h3>
+                        <p><strong>Velocidade IA:</strong> Normal (5 segundos entre ações)</p>
+                        <p><strong>Agressividade:</strong> Média (40% chance de atacar)</p>
+                        <p><strong>Força:</strong> Ataques de 60-200 unidades</p>
+                        <p><strong>Expansão:</strong> 40-150 unidades por célula</p>
+                    </div>
+                    
+                    <div class="difficulty-card hard" onclick="selectDifficulty('hard')">
+                        <h3>🔴 Difícil</h3>
+                        <p><strong>Velocidade IA:</strong> Muito Rápida (2 segundos entre ações)</p>
+                        <p><strong>Agressividade:</strong> Alta (60% chance de atacar)</p>
+                        <p><strong>Força:</strong> Ataques de 100-400 unidades</p>
+                        <p><strong>Expansão:</strong> 80-250 unidades por célula</p>
+                    </div>
+                </div>
+                
+                <div class="difficulty-info">
+                    <p>⚡ <strong>Novidades da Ultimate Edition:</strong></p>
+                    <p>• Cooldown reduzido para 5 segundos</p>
+                    <p>• 1000 territórios bônus espalhados pelo mapa!</p>
+                    <p>• Capturar bônus = 15s de conquista livre!</p>
+                    <p>• Sistema de pausa/play para descansar</p>
+                    <p>• Cronômetro de tempo de jogo</p>
+                </div>
+                
+                <button id="startGameBtn" class="start-button" onclick="startGameWithDifficulty()" disabled>
+                    Iniciar Batalha Ultimate
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay de Pausa -->
+    <div id="pauseOverlay" class="pause-overlay">
+        <div class="pause-message">
+            ⏸️ JOGO PAUSADO ⏸️<br>
+            <small>Clique em "▶️ Continuar" para retomar</small>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="game-canvas">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+        
+        <div class="ui-panel">
+            <div class="ui-section">
+                <h3>Empire Attack - Ultimate</h3>
+                <div class="stats">
+                    <div><strong>Dificuldade:</strong> <span id="currentDifficulty">-</span></div>
+                    <div><strong>Bônus Restantes:</strong> <span id="bonusCount">0</span></div>
+                </div>
+                
+                <div class="game-timer" id="gameTimer">
+                    ⏰ Tempo: 00:00:00
+                </div>
+                
+                <div class="pause-controls">
+                    <button class="button pause" id="pauseBtn" onclick="togglePause()">⏸️ Pausar</button>
+                    <button class="button" onclick="resetView()">🎯 Centro</button>
+                </div>
+                
+                <div id="cooldownIndicator" class="cooldown-indicator ready">
+                    ✅ Pronto para Conquistar!
+                </div>
+            </div>
+
+            <div class="ui-section">
+                <h3>Impérios</h3>
+                <div id="empireStats"></div>
+            </div>
+
+            <div class="ui-section">
+                <h3>Controles</h3>
+                <div class="arrow-controls">
+                    <div></div>
+                    <button class="arrow-btn" onclick="moveMap(0, -1)">↑</button>
+                    <div></div>
+                    <button class="arrow-btn" onclick="moveMap(-1, 0)">←</button>
+                    <button class="arrow-btn" onclick="resetView()">⌂</button>
+                    <button class="arrow-btn" onclick="moveMap(1, 0)">→</button>
+                    <div></div>
+                    <button class="arrow-btn" onclick="moveMap(0, 1)">↓</button>
+                    <div></div>
+                </div>
+                <div class="keyboard-hint">Use as setas do teclado para navegar</div>
+                
+                <div class="controls-grid">
+                    <button class="button" onclick="zoomOut()">Zoom Out</button>
+                    <button class="button" onclick="zoomIn()">Zoom In</button>
+                    <button class="button" onclick="refreshMap()">Atualizar</button>
+                </div>
+            </div>
+
+            <div class="ui-section">
+                <h3>Ações</h3>
+                <button class="button" id="populateBtn" onclick="togglePopulate()">Povoar: OFF</button>
+                <div>
+                    <label>População:</label>
+                    <input type="number" class="population-input" id="populationAmount" value="100" min="1" max="10000">
+                </div>
+                <button class="button danger" onclick="showDifficultyScreen()">Nova Partida</button>
+            </div>
+
+            <div class="ui-section">
+                <h3>Legenda</h3>
+                <div style="font-size: 11px;">
+                    <div>🏰 = Suas cidades | 🏴 = Cidades inimigas</div>
+                    <div>⛰️ = Montanhas (intransponíveis)</div>
+                    <div><strong>Bônus:</strong></div>
+                    <div>🥉 = Pequeno (3-5 expansões)</div>
+                    <div>🥈 = Médio (6-8 expansões)</div>
+                    <div>🥇 = Grande (9-12 expansões)</div>
+                    <div style="color: #f39c12; font-weight: bold; margin-top: 5px;">
+                        ⚡ Bônus = 15s de conquista livre!
+                    </div>
+                </div>
+            </div>
+
+            <div class="ui-section">
+                <h3>Log de Eventos</h3>
+                <div class="log" id="gameLog"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para mensagens de vitória/derrota -->
+    <div id="gameModal" class="modal">
+        <div id="modalContent" class="modal-content">
+            <h2 id="modalTitle"></h2>
+            <p id="modalMessage"></p>
+            <div id="finalTime" style="margin: 20px 0; font-size: 18px; font-weight: bold;"></div>
+            <button class="modal-button" onclick="showDifficultyScreen()">Nova Partida</button>
+            <button class="modal-button" onclick="closeModal()">Continuar</button>
+        </div>
+    </div>
+
+    <script>
+        // Configurações do jogo
+        const GRID_SIZE = 25;
+        const MAX_POPULATION = 500000;
+        const SUPPLY_INTERVAL = 15000; // 15 segundos
+        const CONQUEST_COOLDOWN = 5000; // 5 segundos de cooldown (reduzido!)
+        const BONUS_FRENZY_DURATION = 15000; // 15 segundos de conquista livre
+        const BONUS_TERRITORY_COUNT = 1000; // 1000 territórios bônus!
+        const MOUNTAIN_RANGE_COUNT = 25; // Mais cadeias de montanhas
+        const ENEMY_COUNT = 5; // 5 inimigos
+
+        // Configurações de dificuldade
+        const DIFFICULTY_SETTINGS = {
+            easy: {
+                name: '🟢 Fácil',
+                aiInterval: 8000,     // 8 segundos
+                attackChance: 0.25,   // 25% chance de atacar
+                attackMin: 30,
+                attackMax: 120,
+                expandMin: 20,
+                expandMax: 80
+            },
+            medium: {
+                name: '🟡 Médio',
+                aiInterval: 5000,     // 5 segundos
+                attackChance: 0.4,    // 40% chance de atacar
+                attackMin: 60,
+                attackMax: 200,
+                expandMin: 40,
+                expandMax: 150
+            },
+            hard: {
+                name: '🔴 Difícil',
+                aiInterval: 2000,     // 2 segundos
+                attackChance: 0.6,    // 60% chance de atacar
+                attackMin: 100,
+                attackMax: 400,
+                expandMin: 80,
+                expandMax: 250
+            }
+        };
+
+        // Estados do jogo
+        let canvas, ctx;
+        let gameState = {
+            grid: new Map(),
+            bonusTerritories: new Map(),
+            mountains: new Set(),
+            players: [],
+            viewOffset: { x: 0, y: 0 },
+            zoom: 1,
+            populateMode: false,
+            selectedCell: null,
+            lastSupplyCheck: Date.now(),
+            lastAIMove: new Map(),
+            lastPlayerConquest: 0,
+            bonusFrenzyEnd: 0, // Quando termina o frenesi de bônus
+            gameEnded: false,
+            gamePaused: false,
+            gameStartTime: 0,
+            pausedTime: 0, // Tempo total pausado
+            difficulty: null,
+            selectedDifficulty: null
+        };
+
+        // Tipos de célula
+        const CELL_TYPES = {
+            EMPTY: 0,
+            PLAYER: 1,
+            ENEMY1: 2,
+            ENEMY2: 3,
+            ENEMY3: 4,
+            ENEMY4: 5,
+            ENEMY5: 6,
+            PLAYER_CITY: 7,
+            ENEMY1_CITY: 8,
+            ENEMY2_CITY: 9,
+            ENEMY3_CITY: 10,
+            ENEMY4_CITY: 11,
+            ENEMY5_CITY: 12,
+            BONUS_SMALL: 13,
+            BONUS_MEDIUM: 14,
+            BONUS_LARGE: 15,
+            MOUNTAIN: 16
+        };
+
+        // Cores dos jogadores
+        const COLORS = {
+            [CELL_TYPES.EMPTY]: '#95a5a6',
+            [CELL_TYPES.PLAYER]: '#3498db',
+            [CELL_TYPES.ENEMY1]: '#e74c3c',
+            [CELL_TYPES.ENEMY2]: '#9b59b6',
+            [CELL_TYPES.ENEMY3]: '#f39c12',
+            [CELL_TYPES.ENEMY4]: '#27ae60',
+            [CELL_TYPES.ENEMY5]: '#e67e22',
+            [CELL_TYPES.PLAYER_CITY]: '#2980b9',
+            [CELL_TYPES.ENEMY1_CITY]: '#c0392b',
+            [CELL_TYPES.ENEMY2_CITY]: '#8e44ad',
+            [CELL_TYPES.ENEMY3_CITY]: '#d68910',
+            [CELL_TYPES.ENEMY4_CITY]: '#229954',
+            [CELL_TYPES.ENEMY5_CITY]: '#ca6f1e',
+            [CELL_TYPES.BONUS_SMALL]: '#cd7f32',
+            [CELL_TYPES.BONUS_MEDIUM]: '#c0c0c0',
+            [CELL_TYPES.BONUS_LARGE]: '#ffd700',
+            [CELL_TYPES.MOUNTAIN]: '#5d6d7e'
+        };
+
+        // Nomes dos jogadores
+        const PLAYER_NAMES = ['Você', 'Vermelho', 'Roxo', 'Laranja', 'Verde', 'Marrom'];
+
+        // Inicialização
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Eventos do canvas
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('wheel', handleWheel);
+            
+            // Eventos do teclado
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Mostrar tela de dificuldade
+            showDifficultyScreen();
+        }
+
+        function showDifficultyScreen() {
+            document.getElementById('difficultyScreen').style.display = 'block';
+            document.body.classList.remove('game-mode');
+            gameState.selectedDifficulty = null;
+            updateStartButton();
+            
+            // Reset selected cards
+            document.querySelectorAll('.difficulty-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+        }
+
+        function selectDifficulty(difficulty) {
+            gameState.selectedDifficulty = difficulty;
+            
+            // Update visual selection
+            document.querySelectorAll('.difficulty-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`.difficulty-card.${difficulty}`).classList.add('selected');
+            
+            updateStartButton();
+        }
+
+        function updateStartButton() {
+            const startBtn = document.getElementById('startGameBtn');
+            startBtn.disabled = !gameState.selectedDifficulty;
+        }
+
+        function startGameWithDifficulty() {
+            if (!gameState.selectedDifficulty) return;
+            
+            gameState.difficulty = gameState.selectedDifficulty;
+            document.getElementById('difficultyScreen').style.display = 'none';
+            document.body.classList.add('game-mode');
+            
+            // Inicializar o jogo
+            initGame();
+            
+            // Loop principal
+            gameLoop();
+        }
+
+        function initGame() {
+            gameState.grid.clear();
+            gameState.bonusTerritories.clear();
+            gameState.mountains.clear();
+            gameState.lastAIMove.clear();
+            gameState.gameEnded = false;
+            gameState.gamePaused = false;
+            gameState.gameStartTime = Date.now();
+            gameState.pausedTime = 0;
+            gameState.lastPlayerConquest = 0;
+            gameState.bonusFrenzyEnd = 0;
+            
+            // Inicializar jogadores
+            initializePlayers();
+            
+            // Gerar montanhas primeiro
+            generateMountains();
+            
+            // Criar cidades dos jogadores
+            createPlayerCities();
+            
+            // Gerar territórios bônus
+            generateBonusTerritories();
+            
+            resetView();
+            updateUI();
+            logEvent(`Nova batalha ultimate iniciada - Dificuldade: ${DIFFICULTY_SETTINGS[gameState.difficulty].name}`, "special");
+            logEvent(`🎯 ${BONUS_TERRITORY_COUNT} territórios bônus espalhados pelo mapa!`, "special");
+        }
+
+        function initializePlayers() {
+            gameState.players = [
+                { id: 0, name: 'Você', isAI: false, alive: true, x: 15, y: 15 },
+                { id: 1, name: 'Vermelho', isAI: true, alive: true, x: 120, y: 15 },
+                { id: 2, name: 'Roxo', isAI: true, alive: true, x: 15, y: 120 },
+                { id: 3, name: 'Laranja', isAI: true, alive: true, x: 120, y: 120 },
+                { id: 4, name: 'Verde', isAI: true, alive: true, x: 67, y: 10 },
+                { id: 5, name: 'Marrom', isAI: true, alive: true, x: 67, y: 125 }
+            ];
+            
+            // Inicializar cooldowns da IA
+            for (let player of gameState.players) {
+                if (player.isAI) {
+                    gameState.lastAIMove.set(player.id, Date.now());
+                }
+            }
+        }
+
+        function createPlayerCities() {
+            for (let player of gameState.players) {
+                const cityType = CELL_TYPES.PLAYER_CITY + player.id;
+                const territoryType = CELL_TYPES.PLAYER + player.id;
+                
+                setCell(player.x, player.y, cityType, 1000);
+                
+                // Adicionar territórios iniciais ao redor
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const x = player.x + dx;
+                        const y = player.y + dy;
+                        if (getCell(x, y).type === CELL_TYPES.EMPTY) {
+                            setCell(x, y, territoryType, 75);
+                        }
+                    }
+                }
+            }
+        }
+
+        function generateMountains() {
+            // Criar áreas extensas de montanhas
+            for (let range = 0; range < MOUNTAIN_RANGE_COUNT; range++) {
+                // Tamanho aleatório da área montanhosa
+                const areaSize = Math.floor(Math.random() * 20) + 8; // 8-28 células
+                
+                // Ponto central da área
+                let centerX = Math.floor(Math.random() * 130) + 10;
+                let centerY = Math.floor(Math.random() * 130) + 10;
+                
+                // Evitar muito próximo das cidades
+                if (isNearAnyCity(centerX, centerY)) continue;
+                
+                // Gerar área montanhosa irregular
+                const visited = new Set();
+                const queue = [{x: centerX, y: centerY}];
+                let mountainsCreated = 0;
+                
+                while (queue.length > 0 && mountainsCreated < areaSize) {
+                    const {x, y} = queue.shift();
+                    const key = `${x},${y}`;
+                    
+                    if (visited.has(key) || isNearAnyCity(x, y)) continue;
+                    visited.add(key);
+                    
+                    if (getCell(x, y).type === CELL_TYPES.EMPTY) {
+                        setCell(x, y, CELL_TYPES.MOUNTAIN, 0);
+                        gameState.mountains.add(key);
+                        mountainsCreated++;
+                        
+                        // Adicionar vizinhos à fila com probabilidade decrescente
+                        for (let dx = -1; dx <= 1; dx++) {
+                            for (let dy = -1; dy <= 1; dy++) {
+                                if (dx === 0 && dy === 0) continue;
+                                if (Math.random() < 0.7) { // 70% chance de expandir
+                                    queue.push({x: x + dx, y: y + dy});
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function generateBonusTerritories() {
+            for (let i = 0; i < BONUS_TERRITORY_COUNT; i++) {
+                let x, y, bonusType;
+                let attempts = 0;
+                
+                do {
+                    x = Math.floor(Math.random() * 140) + 5;
+                    y = Math.floor(Math.random() * 140) + 5;
+                    
+                    // Definir tipo de bônus aleatório
+                    const rand = Math.random();
+                    if (rand < 0.5) bonusType = CELL_TYPES.BONUS_SMALL;
+                    else if (rand < 0.8) bonusType = CELL_TYPES.BONUS_MEDIUM;
+                    else bonusType = CELL_TYPES.BONUS_LARGE;
+                    
+                    attempts++;
+                } while ((getCell(x, y).type !== CELL_TYPES.EMPTY || 
+                         isNearAnyCity(x, y)) && attempts < 500);
+                
+                if (attempts < 500) {
+                    setCell(x, y, bonusType, 0);
+                    
+                    // Armazenar informações do bônus
+                    let expansionSize;
+                    if (bonusType === CELL_TYPES.BONUS_SMALL) expansionSize = Math.floor(Math.random() * 3) + 3; // 3-5
+                    else if (bonusType === CELL_TYPES.BONUS_MEDIUM) expansionSize = Math.floor(Math.random() * 3) + 6; // 6-8
+                    else expansionSize = Math.floor(Math.random() * 4) + 9; // 9-12
+                    
+                    gameState.bonusTerritories.set(`${x},${y}`, {
+                        type: bonusType,
+                        expansionSize: expansionSize
+                    });
+                }
+            }
+        }
+
+        function isNearAnyCity(x, y) {
+            for (let player of gameState.players) {
+                const distance = Math.abs(x - player.x) + Math.abs(y - player.y);
+                if (distance < 8) return true;
+            }
+            return false;
+        }
+
+        function setCell(x, y, type, population = 0) {
+            const key = `${x},${y}`;
+            gameState.grid.set(key, { x, y, type, population });
+        }
+
+        function getCell(x, y) {
+            const key = `${x},${y}`;
+            return gameState.grid.get(key) || { x, y, type: CELL_TYPES.EMPTY, population: 0 };
+        }
+
+        function getNeighbors(x, y) {
+            const neighbors = [];
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = -1; dy <= 1; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    neighbors.push(getCell(x + dx, y + dy));
+                }
+            }
+            return neighbors;
+        }
+
+        function getPlayerFromCellType(cellType) {
+            if (cellType >= CELL_TYPES.PLAYER && cellType <= CELL_TYPES.ENEMY5) {
+                return cellType - CELL_TYPES.PLAYER;
+            }
+            if (cellType >= CELL_TYPES.PLAYER_CITY && cellType <= CELL_TYPES.ENEMY5_CITY) {
+                return cellType - CELL_TYPES.PLAYER_CITY;
+            }
+            return -1;
+        }
+
+        function isAdjacentToPlayerTerritory(x, y, playerId) {
+            const neighbors = getNeighbors(x, y);
+            return neighbors.some(cell => {
+                const ownerPlayer = getPlayerFromCellType(cell.type);
+                return ownerPlayer === playerId;
+            });
+        }
+
+        function calculateBonus(x, y, playerId) {
+            let bonus = 1;
+            
+            const player = gameState.players[playerId];
+            if (!player) return bonus;
+            
+            // Bônus por proximidade da cidade
+            const cityDistance = Math.abs(x - player.x) + Math.abs(y - player.y);
+            if (cityDistance <= 4) bonus *= 1.3;
+            
+            // Bônus por vizinhos do jogador
+            const playerNeighbors = getNeighbors(x, y).filter(cell => {
+                const ownerPlayer = getPlayerFromCellType(cell.type);
+                return ownerPlayer === playerId;
+            }).length;
+            
+            if (playerNeighbors > 1) bonus *= 1.2;
+            
+            return bonus;
+        }
+
+        function updateCooldownIndicator() {
+            const indicator = document.getElementById('cooldownIndicator');
+            const now = Date.now();
+            
+            // Verificar se está no frenesi de bônus
+            if (now < gameState.bonusFrenzyEnd) {
+                const remaining = Math.ceil((gameState.bonusFrenzyEnd - now) / 1000);
+                indicator.textContent = `⚡ FRENESI DE CONQUISTA: ${remaining}s`;
+                indicator.className = 'cooldown-indicator frenzy';
+                return;
+            }
+            
+            const timeSinceLastConquest = now - gameState.lastPlayerConquest;
+            
+            if (timeSinceLastConquest >= CONQUEST_COOLDOWN) {
+                indicator.textContent = '✅ Pronto para Conquistar!';
+                indicator.className = 'cooldown-indicator ready';
+            } else {
+                const remaining = Math.ceil((CONQUEST_COOLDOWN - timeSinceLastConquest) / 1000);
+                indicator.textContent = `⏳ Cooldown: ${remaining}s`;
+                indicator.className = 'cooldown-indicator';
+            }
+        }
+
+        function canPlayerConquer() {
+            const now = Date.now();
+            return (now < gameState.bonusFrenzyEnd) || (now - gameState.lastPlayerConquest >= CONQUEST_COOLDOWN);
+        }
+
+        function activateBonusFrenzy() {
+            gameState.bonusFrenzyEnd = Date.now() + BONUS_FRENZY_DURATION;
+            logEvent("⚡ FRENESI DE CONQUISTA ATIVADO! 15 segundos de conquista livre!", "special");
+        }
+
+        function updateGameTimer() {
+            if (gameState.gameEnded || gameState.gamePaused || !gameState.gameStartTime) return;
+            
+            const now = Date.now();
+            const elapsed = now - gameState.gameStartTime - gameState.pausedTime;
+            
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('gameTimer').textContent = `⏰ Tempo: ${timeString}`;
+        }
+
+        function togglePause() {
+            if (gameState.gameEnded) return;
+            
+            gameState.gamePaused = !gameState.gamePaused;
+            
+            const pauseBtn = document.getElementById('pauseBtn');
+            const pauseOverlay = document.getElementById('pauseOverlay');
+            
+            if (gameState.gamePaused) {
+                pauseBtn.textContent = '▶️ Continuar';
+                pauseOverlay.style.display = 'flex';
+                gameState.pauseStartTime = Date.now();
+            } else {
+                pauseBtn.textContent = '⏸️ Pausar';
+                pauseOverlay.style.display = 'none';
+                if (gameState.pauseStartTime) {
+                    gameState.pausedTime += Date.now() - gameState.pauseStartTime;
+                }
+            }
+        }
+
+        function handleKeyDown(event) {
+            if (document.body.classList.contains('game-mode') && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+                event.preventDefault();
+            }
+
+            switch(event.code) {
+                case 'ArrowUp':
+                    if (document.body.classList.contains('game-mode') && !gameState.gamePaused) moveMap(0, -1);
+                    break;
+                case 'ArrowDown':
+                    if (document.body.classList.contains('game-mode') && !gameState.gamePaused) moveMap(0, 1);
+                    break;
+                case 'ArrowLeft':
+                    if (document.body.classList.contains('game-mode') && !gameState.gamePaused) moveMap(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    if (document.body.classList.contains('game-mode') && !gameState.gamePaused) moveMap(1, 0);
+                    break;
+                case 'Space':
+                    if (document.body.classList.contains('game-mode')) {
+                        event.preventDefault();
+                        if (!gameState.gamePaused) togglePopulate();
+                    }
+                    break;
+                case 'KeyR':
+                    if (document.body.classList.contains('game-mode') && !gameState.gamePaused) {
+                        resetView();
+                    }
+                    break;
+                case 'KeyP':
+                    if (document.body.classList.contains('game-mode')) {
+                        event.preventDefault();
+                        togglePause();
+                    }
+                    break;
+            }
+        }
+
+        function handleCanvasClick(event) {
+            if (gameState.gameEnded || !gameState.difficulty || gameState.gamePaused) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((event.clientX - rect.left - gameState.viewOffset.x) / (GRID_SIZE * gameState.zoom));
+            const y = Math.floor((event.clientY - rect.top - gameState.viewOffset.y) / (GRID_SIZE * gameState.zoom));
+            
+            if (gameState.populateMode) {
+                populateCell(x, y);
+            }
+        }
+
+        function populateCell(x, y) {
+            if (!canPlayerConquer()) {
+                logEvent("Aguarde o cooldown para conquistar novamente!", "neutral");
+                return;
+            }
+            
+            const cell = getCell(x, y);
+            const amount = parseInt(document.getElementById('populationAmount').value);
+            const playerId = 0; // Jogador humano
+            
+            // Verificar se é uma montanha
+            if (cell.type === CELL_TYPES.MOUNTAIN) {
+                logEvent(`Não é possível conquistar montanhas em (${x}, ${y})!`, "neutral");
+                return;
+            }
+            
+            if (cell.type === CELL_TYPES.EMPTY) {
+                // Verificar se é adjacente ao território do jogador
+                if (!isAdjacentToPlayerTerritory(x, y, playerId)) {
+                    logEvent(`Não é possível conquistar território em (${x}, ${y}) - deve ser adjacente aos seus territórios!`, "neutral");
+                    return;
+                }
+                
+                // Expandir território
+                const bonus = calculateBonus(x, y, playerId);
+                const finalAmount = Math.floor(amount * bonus);
+                
+                setCell(x, y, CELL_TYPES.PLAYER, Math.min(finalAmount, MAX_POPULATION));
+                logEvent(`Conquistou novo território em (${x}, ${y}) com ${finalAmount} pessoas`, "player");
+                
+                // Não resetar cooldown se estiver no frenesi
+                if (Date.now() >= gameState.bonusFrenzyEnd) {
+                    gameState.lastPlayerConquest = Date.now();
+                }
+                
+            } else if (cell.type === CELL_TYPES.PLAYER) {
+                // Fortalecer território existente
+                const bonus = calculateBonus(x, y, playerId);
+                const finalAmount = Math.floor(amount * bonus);
+                
+                setCell(x, y, CELL_TYPES.PLAYER, Math.min(cell.population + finalAmount, MAX_POPULATION));
+                logEvent(`Reforçou território em (${x}, ${y}) com ${finalAmount} pessoas`, "player");
+                
+                if (Date.now() >= gameState.bonusFrenzyEnd) {
+                    gameState.lastPlayerConquest = Date.now();
+                }
+                
+            } else if (getPlayerFromCellType(cell.type) !== playerId && getPlayerFromCellType(cell.type) >= 0) {
+                // Atacar território inimigo
+                if (!isAdjacentToPlayerTerritory(x, y, playerId)) {
+                    logEvent(`Não é possível atacar (${x}, ${y}) - deve ser adjacente aos seus territórios!`, "neutral");
+                    return;
+                }
+                
+                attack(x, y, amount, playerId);
+                
+                if (Date.now() >= gameState.bonusFrenzyEnd) {
+                    gameState.lastPlayerConquest = Date.now();
+                }
+                
+            } else if (cell.type >= CELL_TYPES.BONUS_SMALL && cell.type <= CELL_TYPES.BONUS_LARGE) {
+                // Capturar território bônus
+                if (!isAdjacentToPlayerTerritory(x, y, playerId)) {
+                    logEvent(`Não é possível capturar bônus em (${x}, ${y}) - deve ser adjacente aos seus territórios!`, "neutral");
+                    return;
+                }
+                
+                captureBonusTerritory(x, y, playerId);
+                activateBonusFrenzy(); // Ativar frenesi de bônus!
+                
+                if (Date.now() >= gameState.bonusFrenzyEnd) {
+                    gameState.lastPlayerConquest = Date.now();
+                }
+            }
+            
+            checkGameEnd();
+            updateUI();
+        }
+
+        function captureBonusTerritory(x, y, playerId) {
+            const key = `${x},${y}`;
+            const bonusInfo = gameState.bonusTerritories.get(key);
+            
+            if (!bonusInfo) return;
+            
+            const territoryType = CELL_TYPES.PLAYER + playerId;
+            const bonusName = bonusInfo.type === CELL_TYPES.BONUS_SMALL ? 'Pequeno' : 
+                             bonusInfo.type === CELL_TYPES.BONUS_MEDIUM ? 'Médio' : 'Grande';
+            
+            // Converter território bônus
+            setCell(x, y, territoryType, 300);
+            gameState.bonusTerritories.delete(key);
+            
+            // Expandir automaticamente
+            const neighbors = getNeighbors(x, y);
+            let expansions = 0;
+            const maxExpansions = bonusInfo.expansionSize;
+            
+            // Embaralhar vizinhos para expansão aleatória
+            for (let i = neighbors.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [neighbors[i], neighbors[j]] = [neighbors[j], neighbors[i]];
+            }
+            
+            for (let neighbor of neighbors) {
+                if (neighbor.type === CELL_TYPES.EMPTY && expansions < maxExpansions) {
+                    setCell(neighbor.x, neighbor.y, territoryType, 150);
+                    expansions++;
+                }
+            }
+            
+            const playerName = gameState.players[playerId].name;
+            logEvent(`🎉 ${playerName} capturou bônus ${bonusName} em (${x}, ${y})! Expandiu para ${expansions} territórios!`, playerId === 0 ? "special" : "enemy");
+        }
+
+        function attack(x, y, attackForce, attackerPlayerId) {
+            const cell = getCell(x, y);
+            const defenderPlayerId = getPlayerFromCellType(cell.type);
+            
+            if (defenderPlayerId < 0) return;
+            
+            const attackerName = gameState.players[attackerPlayerId].name;
+            const defenderName = gameState.players[defenderPlayerId].name;
+            
+            if (attackForce > cell.population) {
+                // Capturar território
+                const remaining = attackForce - cell.population;
+                const newType = (cell.type >= CELL_TYPES.PLAYER_CITY) ? 
+                    CELL_TYPES.PLAYER_CITY + attackerPlayerId : 
+                    CELL_TYPES.PLAYER + attackerPlayerId;
+                
+                // Verificar se capturou uma cidade
+                if (cell.type >= CELL_TYPES.PLAYER_CITY) {
+                    capturePlayerEmpire(defenderPlayerId, attackerPlayerId);
+                    logEvent(`🏆 ${attackerName} capturou a cidade de ${defenderName}!`, attackerPlayerId === 0 ? "special" : "enemy");
+                } else {
+                    setCell(x, y, newType, remaining);
+                    logEvent(`${attackerName} capturou território de ${defenderName} em (${x}, ${y})`, attackerPlayerId === 0 ? "player" : "enemy");
+                }
+            } else {
+                // Reduzir população
+                setCell(x, y, cell.type, cell.population - attackForce);
+                logEvent(`${attackerName} atacou ${defenderName} em (${x}, ${y}), causou ${attackForce} baixas`, attackerPlayerId === 0 ? "player" : "enemy");
+            }
+        }
+
+        function capturePlayerEmpire(defeatedPlayerId, victorPlayerId) {
+            // Marcar jogador como derrotado
+            gameState.players[defeatedPlayerId].alive = false;
+            
+            // Converter todos os territórios do jogador derrotado
+            for (let [key, cell] of gameState.grid) {
+                if (getPlayerFromCellType(cell.type) === defeatedPlayerId) {
+                    const newType = (cell.type >= CELL_TYPES.PLAYER_CITY) ? 
+                        CELL_TYPES.PLAYER_CITY + victorPlayerId : 
+                        CELL_TYPES.PLAYER + victorPlayerId;
+                    setCell(cell.x, cell.y, newType, cell.population);
+                }
+            }
+        }
+
+        function checkGameEnd() {
+            const alivePlayers = gameState.players.filter(p => p.alive);
+            
+            if (alivePlayers.length === 1) {
+                const winner = alivePlayers[0];
+                const finalTime = formatGameTime();
+                
+                if (winner.id === 0) {
+                    showGameEndModal(true, "🏆 VITÓRIA ULTIMATE! 🏆", 
+                        `Parabéns! Você dominou todos os 5 inimigos e conquistou o mundo inteiro!`, finalTime);
+                } else {
+                    showGameEndModal(false, "💀 Derrota Total! 💀", 
+                        `${winner.name} dominou todos os outros impérios, incluindo o seu!`, finalTime);
+                }
+                gameState.gameEnded = true;
+            }
+        }
+
+        function formatGameTime() {
+            const now = Date.now();
+            const elapsed = now - gameState.gameStartTime - gameState.pausedTime;
+            
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function showGameEndModal(isVictory, title, message, finalTime) {
+            const modal = document.getElementById('gameModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const finalTimeDiv = document.getElementById('finalTime');
+            
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            finalTimeDiv.textContent = `⏰ Tempo Final: ${finalTime}`;
+            
+            if (isVictory) {
+                modalContent.className = 'modal-content victory';
+            } else {
+                modalContent.className = 'modal-content defeat';
+            }
+            
+            modal.style.display = 'block';
+            gameState.gameEnded = true;
+        }
+
+        function closeModal() {
+            document.getElementById('gameModal').style.display = 'none';
+        }
+
+        function aiTurn() {
+            if (gameState.gameEnded || !gameState.difficulty || gameState.gamePaused) return;
+            
+            const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
+            const now = Date.now();
+            
+            for (let player of gameState.players) {
+                if (!player.isAI || !player.alive) continue;
+                
+                const lastMove = gameState.lastAIMove.get(player.id);
+                if (now - lastMove < settings.aiInterval) continue;
+                
+                performAIAction(player, settings);
+                gameState.lastAIMove.set(player.id, now);
+            }
+        }
+
+        function performAIAction(player, settings) {
+            const playerId = player.id;
+            const territoryType = CELL_TYPES.PLAYER + playerId;
+            const cityType = CELL_TYPES.PLAYER_CITY + playerId;
+            
+            // Encontrar territórios do jogador
+            const playerCells = Array.from(gameState.grid.values()).filter(cell => 
+                getPlayerFromCellType(cell.type) === playerId
+            );
+            
+            if (playerCells.length === 0) return;
+            
+            const randomCell = playerCells[Math.floor(Math.random() * playerCells.length)];
+            const neighbors = getNeighbors(randomCell.x, randomCell.y);
+            
+            // Categorizar vizinhos
+            const emptyNeighbors = neighbors.filter(cell => cell.type === CELL_TYPES.EMPTY);
+            const bonusNeighbors = neighbors.filter(cell => 
+                cell.type >= CELL_TYPES.BONUS_SMALL && cell.type <= CELL_TYPES.BONUS_LARGE
+            );
+            const enemyNeighbors = neighbors.filter(cell => {
+                const ownerPlayer = getPlayerFromCellType(cell.type);
+                return ownerPlayer >= 0 && ownerPlayer !== playerId;
+            });
+            
+            // Prioridades: 1) Bônus, 2) Atacar, 3) Expandir
+            if (bonusNeighbors.length > 0 && Math.random() > 0.3) {
+                const target = bonusNeighbors[0];
+                captureBonusTerritory(target.x, target.y, playerId);
+                
+            } else if (Math.random() < settings.attackChance && enemyNeighbors.length > 0) {
+                const target = enemyNeighbors[Math.floor(Math.random() * enemyNeighbors.length)];
+                const attackForce = Math.floor(Math.random() * (settings.attackMax - settings.attackMin)) + settings.attackMin;
+                attack(target.x, target.y, attackForce, playerId);
+                
+            } else if (emptyNeighbors.length > 0) {
+                const target = emptyNeighbors[Math.floor(Math.random() * emptyNeighbors.length)];
+                const amount = Math.floor(Math.random() * (settings.expandMax - settings.expandMin)) + settings.expandMin;
+                setCell(target.x, target.y, territoryType, amount);
+                logEvent(`${player.name} expandiu para (${target.x}, ${target.y})`, "enemy");
+            }
+            
+            checkGameEnd();
+        }
+
+        function checkSupplyLines() {
+            if (gameState.gameEnded || !gameState.difficulty || gameState.gamePaused) return;
+            
+            const now = Date.now();
+            if (now - gameState.lastSupplyCheck < SUPPLY_INTERVAL) return;
+            
+            gameState.lastSupplyCheck = now;
+            
+            // Verificar para todos os jogadores
+            for (let player of gameState.players) {
+                if (!player.alive) continue;
+                
+                const territoryType = CELL_TYPES.PLAYER + player.id;
+                const playerCells = Array.from(gameState.grid.values()).filter(cell => 
+                    cell.type === territoryType
+                );
+                
+                for (let cell of playerCells) {
+                    if (!isConnectedToCity(cell.x, cell.y, player.id)) {
+                        const loss = Math.floor(cell.population * 0.4);
+                        const newPop = cell.population - loss;
+                        
+                        if (newPop <= 0) {
+                            setCell(cell.x, cell.y, CELL_TYPES.EMPTY, 0);
+                            logEvent(`${player.name} perdeu território em (${cell.x}, ${cell.y}) - sem suprimentos`, "neutral");
+                        } else {
+                            setCell(cell.x, cell.y, territoryType, newPop);
+                        }
+                    }
+                }
+            }
+            
+            checkGameEnd();
+        }
+
+        function isConnectedToCity(startX, startY, playerId) {
+            const territoryType = CELL_TYPES.PLAYER + playerId;
+            const cityType = CELL_TYPES.PLAYER_CITY + playerId;
+            const visited = new Set();
+            const queue = [{x: startX, y: startY}];
+            
+            while (queue.length > 0) {
+                const {x, y} = queue.shift();
+                const key = `${x},${y}`;
+                
+                if (visited.has(key)) continue;
+                visited.add(key);
+                
+                const cell = getCell(x, y);
+                if (cell.type === cityType) return true;
+                
+                if (cell.type === territoryType) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const neighborCell = getCell(x + dx, y + dy);
+                            if (neighborCell.type !== CELL_TYPES.MOUNTAIN) {
+                                queue.push({x: x + dx, y: y + dy});
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        function handleMouseMove(event) {
+            if (!gameState.difficulty) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((event.clientX - rect.left - gameState.viewOffset.x) / (GRID_SIZE * gameState.zoom));
+            const y = Math.floor((event.clientY - rect.top - gameState.viewOffset.y) / (GRID_SIZE * gameState.zoom));
+            
+            const cell = getCell(x, y);
+            const tooltip = document.getElementById('tooltip');
+            
+            if (cell.type !== CELL_TYPES.EMPTY) {
+                let typeName = '';
+                let ownerPlayer = getPlayerFromCellType(cell.type);
+                
+                if (cell.type === CELL_TYPES.MOUNTAIN) {
+                    typeName = 'Montanha ⛰️';
+                } else if (cell.type >= CELL_TYPES.BONUS_SMALL && cell.type <= CELL_TYPES.BONUS_LARGE) {
+                    const bonusNames = ['🥉 Bônus Pequeno', '🥈 Bônus Médio', '🥇 Bônus Grande'];
+                    typeName = bonusNames[cell.type - CELL_TYPES.BONUS_SMALL];
+                } else if (ownerPlayer >= 0) {
+                    const playerName = gameState.players[ownerPlayer]?.name || 'Desconhecido';
+                    const isCity = cell.type >= CELL_TYPES.PLAYER_CITY;
+                    typeName = `${isCity ? 'Cidade' : 'Território'} de ${playerName}`;
+                }
+                
+                let tooltipText = `${typeName}<br>Posição: (${x}, ${y})`;
+                
+                if (cell.type === CELL_TYPES.MOUNTAIN) {
+                    tooltipText += '<br>🚫 Intransponível';
+                } else if (cell.type >= CELL_TYPES.BONUS_SMALL && cell.type <= CELL_TYPES.BONUS_LARGE) {
+                    tooltipText += '<br>⚡ Expandirá ao redor + 15s frenesi!';
+                } else if (ownerPlayer >= 0) {
+                    tooltipText += `<br>População: ${cell.population.toLocaleString()}`;
+                }
+                
+                tooltip.innerHTML = tooltipText;
+                tooltip.style.left = event.clientX + 10 + 'px';
+                tooltip.style.top = event.clientY + 10 + 'px';
+                tooltip.style.display = 'block';
+            } else {
+                tooltip.style.display = 'none';
+            }
+        }
+
+        function handleWheel(event) {
+            if (gameState.gamePaused) return;
+            event.preventDefault();
+            const delta = event.deltaY > 0 ? 0.9 : 1.1;
+            gameState.zoom = Math.max(0.4, Math.min(3, gameState.zoom * delta));
+        }
+
+        function render() {
+            if (!gameState.difficulty || gameState.gamePaused) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const startX = Math.floor(-gameState.viewOffset.x / (GRID_SIZE * gameState.zoom));
+            const endX = startX + Math.ceil(canvas.width / (GRID_SIZE * gameState.zoom)) + 1;
+            const startY = Math.floor(-gameState.viewOffset.y / (GRID_SIZE * gameState.zoom));
+            const endY = startY + Math.ceil(canvas.height / (GRID_SIZE * gameState.zoom)) + 1;
+            
+            for (let x = startX; x < endX; x++) {
+                for (let y = startY; y < endY; y++) {
+                    const cell = getCell(x, y);
+                    const screenX = x * GRID_SIZE * gameState.zoom + gameState.viewOffset.x;
+                    const screenY = y * GRID_SIZE * gameState.zoom + gameState.viewOffset.y;
+                    const size = GRID_SIZE * gameState.zoom;
+                    
+                    // Cor da célula
+                    ctx.fillStyle = COLORS[cell.type];
+                    ctx.fillRect(screenX, screenY, size - 1, size - 1);
+                    
+                    // Efeito visual para montanhas
+                    if (cell.type === CELL_TYPES.MOUNTAIN) {
+                        ctx.fillStyle = '#4a5568';
+                        ctx.fillRect(screenX + 2, screenY + 2, size - 5, size - 5);
+                    }
+                    
+                    // Mostrar população
+                    if (cell.population > 0 && size > 15 && cell.type !== CELL_TYPES.MOUNTAIN) {
+                        ctx.fillStyle = 'white';
+                        ctx.font = `${Math.max(8, size/4)}px Arial`;
+                        ctx.textAlign = 'center';
+                        const text = cell.population > 999 ? `${Math.floor(cell.population/1000)}k` : cell.population.toString();
+                        ctx.fillText(text, screenX + size/2, screenY + size/2 + 3);
+                    }
+                    
+                    // Símbolos especiais
+                    if (size > 15) {
+                        ctx.fillStyle = 'white';
+                        ctx.font = `${Math.max(12, size/3)}px Arial`;
+                        ctx.textAlign = 'center';
+                        
+                        if (cell.type >= CELL_TYPES.PLAYER_CITY && cell.type <= CELL_TYPES.ENEMY5_CITY) {
+                            const ownerPlayer = getPlayerFromCellType(cell.type);
+                            const symbol = ownerPlayer === 0 ? '🏰' : '🏴';
+                            ctx.fillText(symbol, screenX + size/2, screenY + size/2 - 5);
+                        } else if (cell.type === CELL_TYPES.BONUS_SMALL) {
+                            ctx.fillText('🥉', screenX + size/2, screenY + size/2 + 3);
+                        } else if (cell.type === CELL_TYPES.BONUS_MEDIUM) {
+                            ctx.fillText('🥈', screenX + size/2, screenY + size/2 + 3);
+                        } else if (cell.type === CELL_TYPES.BONUS_LARGE) {
+                            ctx.fillText('🥇', screenX + size/2, screenY + size/2 + 3);
+                        } else if (cell.type === CELL_TYPES.MOUNTAIN) {
+                            ctx.fillText('⛰️', screenX + size/2, screenY + size/2 + 3);
+                        }
+                    }
+                    
+                    // Bordas especiais
+                    if (cell.type >= CELL_TYPES.PLAYER_CITY && cell.type <= CELL_TYPES.ENEMY5_CITY) {
+                        ctx.strokeStyle = 'gold';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(screenX, screenY, size - 1, size - 1);
+                    } else if (cell.type >= CELL_TYPES.BONUS_SMALL && cell.type <= CELL_TYPES.BONUS_LARGE) {
+                        ctx.strokeStyle = '#f1c40f';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(screenX + 2, screenY + 2, size - 5, size - 5);
+                    } else if (cell.type === CELL_TYPES.MOUNTAIN) {
+                        ctx.strokeStyle = '#2c3e50';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(screenX, screenY, size - 1, size - 1);
+                    }
+                }
+            }
+            
+            // Grid lines
+            ctx.strokeStyle = '#7f8c8d';
+            ctx.lineWidth = 0.3;
+            for (let x = startX; x <= endX; x++) {
+                const screenX = x * GRID_SIZE * gameState.zoom + gameState.viewOffset.x;
+                ctx.beginPath();
+                ctx.moveTo(screenX, 0);
+                ctx.lineTo(screenX, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = startY; y <= endY; y++) {
+                const screenY = y * GRID_SIZE * gameState.zoom + gameState.viewOffset.y;
+                ctx.beginPath();
+                ctx.moveTo(0, screenY);
+                ctx.lineTo(canvas.width, screenY);
+                ctx.stroke();
+            }
+        }
+
+        function gameLoop() {
+            if (!gameState.gamePaused) {
+                aiTurn();
+                checkSupplyLines();
+                render();
+            }
+            updateUI();
+            updateCooldownIndicator();
+            updateGameTimer();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            if (!gameState.difficulty) return;
+            
+            document.getElementById('currentDifficulty').textContent = DIFFICULTY_SETTINGS[gameState.difficulty].name;
+            document.getElementById('bonusCount').textContent = gameState.bonusTerritories.size;
+            
+            // Atualizar estatísticas dos impérios
+            const empireStats = document.getElementById('empireStats');
+            empireStats.innerHTML = '';
+            
+            for (let player of gameState.players) {
+                if (!player.alive) continue;
+                
+                const territoryTypes = player.id === 0 ? 
+                    [CELL_TYPES.PLAYER, CELL_TYPES.PLAYER_CITY] :
+                    [CELL_TYPES.PLAYER + player.id, CELL_TYPES.PLAYER_CITY + player.id];
+                
+                const territories = Array.from(gameState.grid.values()).filter(cell => 
+                    territoryTypes.includes(cell.type)
+                );
+                
+                const population = territories.reduce((sum, cell) => sum + cell.population, 0);
+                
+                const div = document.createElement('div');
+                div.className = `empire-stats empire-${player.id === 0 ? 'player' : 'enemy' + player.id}`;
+                div.innerHTML = `
+                    <strong>${player.name}</strong><br>
+                    Territórios: ${territories.length}<br>
+                    População: ${population.toLocaleString()}
+                `;
+                empireStats.appendChild(div);
+            }
+        }
+
+        function logEvent(message, type) {
+            const log = document.getElementById('gameLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            
+            // Manter apenas as últimas 100 entradas
+            while (log.children.length > 100) {
+                log.removeChild(log.firstChild);
+            }
+        }
+
+        // Funções de UI
+        function togglePopulate() {
+            if (gameState.gamePaused) return;
+            gameState.populateMode = !gameState.populateMode;
+            const btn = document.getElementById('populateBtn');
+            btn.textContent = gameState.populateMode ? 'Povoar: ON' : 'Povoar: OFF';
+            btn.className = gameState.populateMode ? 'button active' : 'button';
+            canvas.style.cursor = gameState.populateMode ? 'crosshair' : 'default';
+        }
+
+        function moveMap(dx, dy) {
+            if (gameState.gamePaused) return;
+            gameState.viewOffset.x += dx * 50;
+            gameState.viewOffset.y += dy * 50;
+        }
+
+        function zoomIn() {
+            if (gameState.gamePaused) return;
+            gameState.zoom = Math.min(3, gameState.zoom * 1.2);
+        }
+
+        function zoomOut() {
+            if (gameState.gamePaused) return;
+            gameState.zoom = Math.max(0.4, gameState.zoom / 1.2);
+        }
+
+        function resetView() {
+            if (gameState.gamePaused) return;
+            const player = gameState.players[0];
+            gameState.viewOffset.x = canvas.width/2 - player.x * GRID_SIZE * gameState.zoom;
+            gameState.viewOffset.y = canvas.height/2 - player.y * GRID_SIZE * gameState.zoom;
+            gameState.zoom = 1;
+        }
+
+        function refreshMap() {
+            logEvent("Mapa atualizado", "neutral");
+        }
+
+        // Iniciar o jogo quando a página carregar
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
